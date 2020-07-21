@@ -18,4 +18,4 @@ Standard output generated with the example data:
 
 ### Contact
 
-The plotXpress shiny app is created and maintained by Joachim Goedhart ([@joachimgoedhart](https://twitter.com/joachimgoedhart))
+Questions related to the shiny app can be addressed to: Joachim Goedhart ([@joachimgoedhart](https://twitter.com/joachimgoedhart))
