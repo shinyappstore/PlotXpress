@@ -10,7 +10,7 @@ PlotXpress is a shiny app that simplifies the analysis and plotting of data from
 
 Standard output generated with the example data:
 
-![alt text](https://github.com/JoachimGoedhart/PlotXpress/blob/master/plotXpress_example.png "Output")
+![alt text](https://github.com/ScienceParkStudyGroup/PlotXpress/blob/master/plotXpress_example.png "Output")
 
 ### Credits
 
