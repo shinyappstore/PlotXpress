@@ -1,5 +1,5 @@
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# plotXpress: Shiny app for plotting and comparing the data from dual luciferase assays
+# PlotXpress: Shiny app for plotting and comparing the data from dual luciferase assays
 # Created by Joachim Goedhart (@joachimgoedhart) Elias Brandorff and Marc Galland, first version 2020
 # Takes non-tidy, spreadsheet type data as input
 # Uses a CSV file with the conditions
@@ -47,7 +47,7 @@ vals <- reactiveValues(count=0)
 
 ui <- fluidPage(
   
-  titlePanel("plotXpress"),
+  titlePanel("PlotXpress"),
   sidebarLayout(
     sidebarPanel(width=3,
                  
@@ -86,29 +86,33 @@ ui <- fluidPage(
                    radioButtons(
                      "design_input", "Experimental design",
                      choices = list("Example design (all)" = 1, "Example design (subset)" = 2,
-                                    "Upload file (CSV, TXT, Excel)" = 3), selected =  1),
+                                    "Upload in plate format (CSV, TXT, Excel)" = 3, "Upload in tidy format (CSV)"=4), selected =  1),
                    
                    conditionalPanel(
-                     condition = "input.design_input=='3'", fileInput("upload_design", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+                     condition = "input.design_input=='3' || input.design_input=='4'", fileInput("upload_design", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+                     hr(),
+
 
                      NULL
                    ),
-                   
+                   selectInput("filter_column", "Filter based on this parameter:", choices = "-", selected = "-"),
+                   selectInput("remove_these_conditions", "Deselect these conditions:", "", multiple = TRUE),
 
                    conditionalPanel(
                      condition = "input.info_data==true",
                      img(src = 'Data_format.png', width = '100%'), h5(""), a("Background info for converting wide data to tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
                    ),
                    hr(),
-                   downloadButton("downloadData", "Download combined data in tidy format (csv)")
+                   downloadButton("downloadData", "Download combined data (CSV)")
 
                  ),
                  
                  conditionalPanel(
                    condition = "input.tabs=='Plot'",
                    h4("Data presentation"),
-                   selectInput("facet_row", label = "Split rows by:", choices = list(".", "treatment1", "treatment2"), selected = "treatment1"),
-                   selectInput("facet_col", label = "Split columns by:", choices = list(".", "treatment1", "treatment2"), selected = "treatment2"),
+                   selectInput("compare", label = "Compare:", choices = list("condition", "treatment1", "treatment2"), selected = "condition"),
+                   selectInput("facet_row", label = "Split rows by:", choices = list(".", "treatment1", "treatment2","condition"), selected = "treatment1"),
+                   selectInput("facet_col", label = "Split columns by:", choices = list(".", "treatment1", "treatment2","condition"), selected = "treatment2"),
                    
                    checkboxInput(inputId = "show_control",
                                  label = "Show control data",
@@ -296,7 +300,7 @@ df_upload_design <- reactive({
       data <- df_design_all
     } else if (input$design_input == 2) {
       data <- df_design_neuron
-    } else if (input$design_input == 3) {
+    } else if (input$design_input == 3 || input$design_input == 4) {
 
        file_in <- input$upload_design
     if (is.null(input$upload_design)) {
@@ -404,7 +408,7 @@ height <- reactive ({ input$plot_height })
 
 output$downloadPlotPDF <- downloadHandler(
   filename <- function() {
-    paste("plotXpress_", Sys.time(), ".pdf", sep = "")
+    paste("PlotXpress_", Sys.time(), ".pdf", sep = "")
   },
   content <- function(file) {
     pdf(file, width = input$plot_width/72, height = input$plot_height/72)
@@ -416,7 +420,7 @@ output$downloadPlotPDF <- downloadHandler(
 
 output$downloadPlotPNG <- downloadHandler(
   filename <- function() {
-    paste("plotXpress_", Sys.time(), ".png", sep = "")
+    paste("PlotXpress_", Sys.time(), ".png", sep = "")
   },
   content <- function(file) {
     png(file, width = input$plot_width*4, height = input$plot_height*4, res=300)
@@ -429,15 +433,22 @@ output$downloadPlotPNG <- downloadHandler(
 
 
 ##### Read data from Promega GloMax #########
-df_filtered <- reactive({     
+df_tidy_data <- reactive({     
   
   x <- rep(1:12, each=8)
+  
+  #add leading zeros (for compatibility with 'plater' package)
+  x0 <- str_pad(x, 2, pad = "0")
+  
+
   y <- rep(LETTERS[1:8],12)
     df <- df_upload_data()
     if (dim(df)[1]<2) {
       return(data.frame(y,x,firefly=1,renilla=1))
     }
     
+    
+    Wells <- paste0(y,x0)
     ######## SUBSET data from Promega output ###########
   
     # Perhaps need to do this to get last 12 columns: df[,(ncol(df)-11):ncol(df)]
@@ -449,37 +460,66 @@ df_filtered <- reactive({
     #Subset renilla data
     renilla <- df[40:47,6:17] %>% unlist()
 
-    
-    df_filter <- data.frame(y,x,firefly,renilla)
-    
+    df_filter <- data.frame(y,x,Wells,firefly,renilla)
+
     return(df_filter)
     
+})
+
+df_tidy_design <- reactive ({
+  
+  # df <- df_upload_design()
+  
+  if (input$design_input != 4) {
+    x <- rep(1:12, each=8)
+    y <- rep(LETTERS[1:8],12)
+    x0 <- str_pad(x, 2, pad = "0")
+    Wells <- paste0(y,x0)
+    
+    #Read the conditions for each well from the uploaded design file
+    condition <-  as.data.frame(df_upload_design())[1:8,2:13]  %>% unlist(use.names = FALSE)
+    
+    df <- data.frame(Wells,condition)
+    
+    df <- df %>% separate(condition, into =c("condition", "treatment1", "treatment2"), sep="_")
+    
+    #Replace NA by 'empty' treatments
+    df <- df %>% replace_na(list(treatment1="-",treatment2 = "-"))
+    
+  } else if (input$design_input == 4) {
+    
+    df <- df_upload_design()
+    
+  }
+  
+  return(df)
+  
 })
 
 
 df_combined <- reactive({    
   
-  df_combined <- df_filtered()
+  ##### FILTER Conditions ######
+  if (!is.null(input$remove_these_conditions) && input$filter_column != "-") {
+    
+    filter_column <- input$filter_column
+    remove_these_conditions <- input$remove_these_conditions
+    
+    observe({print(remove_these_conditions)})
+    
+    #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
+    # https://dplyr.tidyverse.org/reference/filter.html
+    df_tidy_design <- df_tidy_design() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
+  } else {
+    df_tidy_design <- df_tidy_design()
+  }
   
-  #Read the conditions for each well from the uploaed design file
-  condition <-  as.data.frame(df_upload_design())[1:8,2:13]  %>% unlist(use.names = FALSE)
+  #Join the design with the data
+  df <- full_join(df_tidy_design, df_tidy_data(), by='Wells')
 
-  #Determine the maximimal number of treatments, seperated by an underscore
-  max_treatments <- max(str_count(na.omit(condition), "_"))
+  #######Process the data ######
   
-  x <- paste0("treatment",1:max_treatments)
-  
-  # observe({print(x)})
-  
-  df_combined$condition <- condition
-  
-  df <- df_combined %>% separate(condition, into =c("condition", "treatment1", "treatment2"), sep="_")
-  
-  #Replace NA by 'empty' treatments
-  
-  df <- df %>% replace_na(list(treatment1="-",treatment2 = "-"))
-  
-  #add a column that in which data is normalized to internal control
+  #Caclulcate the ratio of readout over internal control
   df <- df %>% mutate(FR=firefly/renilla) 
   
   #Calculate the average of each group of conditions/treatments
@@ -499,11 +539,11 @@ df_combined <- reactive({
 
 
 ##### Get Variables from the input ##############
-# 
-# observe({
-#   df <- df_combined()
-#   var_names  <- names(df)
-#   varx_list <- c("-", var_names)
+
+observe({
+  df <- df_tidy_design()
+  var_names  <- names(df)
+  varx_list <- c("-", var_names)
 #   
 #   # Get the names of columns that are factors. These can be used for coloring the data with discrete colors
 #   nms_fact <- names(Filter(function(x) is.factor(x) || is.integer(x) ||
@@ -519,12 +559,28 @@ df_combined <- reactive({
 #   mapping_list_num <- c("No",nms_var)
 #   mapping_list_fact <- c("No",nms_fact)
 #   mapping_list_all <- c("No",var_names)
-#   facet_list_factors <- c(".",nms_fact)
+    facet_list_factors <- c(".",var_names)
 #   
-#   # updateSelectInput(session, "facet_row", choices = facet_list_factors)
-#   # updateSelectInput(session, "facet_col", choices = facet_list_factors)
-#   # updateSelectInput(session, "filter_column", choices = varx_list)
-# })
+  # updateSelectInput(session, "facet_row", choices = facet_list_factors)
+  # updateSelectInput(session, "facet_col", choices = facet_list_factors)
+  updateSelectInput(session, "filter_column", choices = varx_list)
+})
+
+########### Get the list of factors from a variable ############
+
+observeEvent(input$filter_column != '-', {
+  
+  filter_column <- input$filter_column
+  
+  if (filter_column == "-") {filter_column <- NULL}
+  
+  koos <- df_tidy_design() %>% select(for_filtering = !!filter_column)
+  
+  conditions_list <- levels(factor(koos$for_filtering))
+  # observe(print((conditions_list)))
+  updateSelectInput(session, "remove_these_conditions", choices = conditions_list)
+  
+})
 
 
 
@@ -537,7 +593,7 @@ df_combined <- reactive({
 
 output$downloadData <- downloadHandler(
   filename = function() {
-    paste("plotXpress_Tidy", ".csv", sep = "")
+    paste("PlotXpress_Tidy", ".csv", sep = "")
   },
   content = function(file) {
     write.csv(df_combined(), file, row.names = FALSE)
@@ -558,16 +614,15 @@ plotdata <-  reactive({
   # Grid
 
   
-  
   if (input$show_control == FALSE) {
     df <- df %>% filter(condition!='control')
   }
   
-  p <-  ggplot(df, aes(x = condition, y = `Fold Change`)) +
+  p <-  ggplot(df, aes_string(x = input$compare, y = "`Fold Change`")) +
     geom_jitter(shape = 16, width=0.2, height=0.0, cex=input$pointSize, color="black", alpha=input$alphaInput) 
   
   if (input$summaryInput !="none") {
-  p <-  p + stat_summary(fun = input$summaryInput, fun.min =input$summaryInput, fun.max = input$summaryInput, geom = "errorbar", width = 0.5, size=1) 
+   p <-  p + stat_summary(fun = input$summaryInput, fun.min =input$summaryInput, fun.max = input$summaryInput, geom = "errorbar", width = 0.5, size=1) 
   }
 
   
@@ -631,7 +686,7 @@ plotdata <-  reactive({
 })
 
 plotplate <- reactive({
-  df <- df_filtered()
+  df <- df_tidy_data()
   
   # signal <- input$signal
   
@@ -648,24 +703,36 @@ output$data_uploaded <- renderDataTable(
   
   #    observe({ print(input$tidyInput) })
   df_upload_design(),
+  
+  
   rownames = FALSE,
-  options = list(
-                paging = FALSE,
-                 #
-                 searching = FALSE,
-                 autoWidth = TRUE,
-                 #GENERATE ellipses (...) for truncated text
-                 # 
-                 # columnDefs = list(list(targets = "_all",
-                 #                        render = JS(
-                 #                          "function(data, type, row, meta) {",
-                 #                          "return type === 'display' && data.length > 12 ?",
-                 #                          "'<span title=\"' + data + '\">' + data.substr(0, 10) + '..</span>' : data;",
-                 #                          "}")
-                 #                        )),
-                scrollX = TRUE),
-  # callback = JS('table.page(3).draw(false);'),
+  options = list(pageLength = 96,
+                 lengthMenu = c(10, 96, 1000, 10000), columnDefs = list(list(className = 'dt-left', targets = '_all')), scrollX = TRUE),
   editable = FALSE,selection = 'none'
+  
+  
+  
+  
+  
+  
+  # rownames = FALSE,
+  # options = list(
+  #               # paging = FALSE,
+  #                #
+  #                searching = FALSE,
+  #                # autoWidth = TRUE,
+  #                #GENERATE ellipses (...) for truncated text
+  #                # 
+  #                # columnDefs = list(list(targets = "_all",
+  #                #                        render = JS(
+  #                #                          "function(data, type, row, meta) {",
+  #                #                          "return type === 'display' && data.length > 12 ?",
+  #                #                          "'<span title=\"' + data + '\">' + data.substr(0, 10) + '..</span>' : data;",
+  #                #                          "}")
+  #                #                        )),
+  #               scrollX = TRUE),
+  # # callback = JS('table.page(3).draw(false);'),
+  # editable = FALSE,selection = 'none'
 )
 
 ##### Render the plot ############
