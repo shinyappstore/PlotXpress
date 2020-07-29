@@ -39,6 +39,13 @@ df_design_all <- read_excel("Design_example.xlsx")
 df_design_Hek <- read_excel("Design_example_Hek.xlsx")
 df_design_neuron <- read_excel("Design_example_neuron.xlsx")
 
+#Define dataframe for
+column <- rep(1:12, each=8)
+row <- rep(LETTERS[1:8],12)
+x0 <- str_pad(column, 2, pad = "0")
+Wells <- paste0(row,x0)
+df_plate <- data.frame(column,row,Wells)
+
 
 # Create a reactive object here that we can share between all the sessions.
 vals <- reactiveValues(count=0)
@@ -95,6 +102,8 @@ ui <- fluidPage(
 
                      NULL
                    ),
+                   selectInput("show_condition", "Show the experimental condition:", choices = "all", selected = "all"),
+                   hr(),
                    selectInput("filter_column", "Filter based on this parameter:", choices = "-", selected = "-"),
                    selectInput("remove_these_conditions", "Deselect these conditions:", "", multiple = TRUE),
 
@@ -255,11 +264,11 @@ ui <- fluidPage(
     mainPanel(
       
       tabsetPanel(id="tabs",
-                  tabPanel("Data upload", h4("Readings from the 96-well plate"),plotOutput("coolplot"),h4("Sample description per well"),dataTableOutput("data_uploaded")),
+                  tabPanel("Data upload", h4("Readings from the 96-well plate"),plotOutput("coolplot"),h4("Sample description per well - plot"), plotOutput("designplot"),h4("Sample description per well - table"),dataTableOutput("data_uploaded")),
                   
 
                   
-                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"),downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("dataplot"),
+                  tabPanel("Plot", downloadButton("downloadPlotPDF", "Download pdf-file"),downloadButton("downloadPlotPNG", "Download png-file"), plotOutput("dataplot")
                   #          downloadButton("downloadPlotSVG", "Download svg-file"), 
                   #          downloadButton("downloadPlotEPS", "Download eps-file"), 
                            
@@ -434,21 +443,12 @@ output$downloadPlotPNG <- downloadHandler(
 
 ##### Read data from Promega GloMax #########
 df_tidy_data <- reactive({     
-  
-  x <- rep(1:12, each=8)
-  
-  #add leading zeros (for compatibility with 'plater' package)
-  x0 <- str_pad(x, 2, pad = "0")
-  
 
-  y <- rep(LETTERS[1:8],12)
     df <- df_upload_data()
     if (dim(df)[1]<2) {
       return(data.frame(y,x,firefly=1,renilla=1))
     }
     
-    
-    Wells <- paste0(y,x0)
     ######## SUBSET data from Promega output ###########
   
     # Perhaps need to do this to get last 12 columns: df[,(ncol(df)-11):ncol(df)]
@@ -460,7 +460,7 @@ df_tidy_data <- reactive({
     #Subset renilla data
     renilla <- df[40:47,6:17] %>% unlist()
 
-    df_filter <- data.frame(y,x,Wells,firefly,renilla)
+    df_filter <- data.frame(df_plate,firefly,renilla)
 
     return(df_filter)
     
@@ -471,15 +471,12 @@ df_tidy_design <- reactive ({
   # df <- df_upload_design()
   
   if (input$design_input != 4) {
-    x <- rep(1:12, each=8)
-    y <- rep(LETTERS[1:8],12)
-    x0 <- str_pad(x, 2, pad = "0")
-    Wells <- paste0(y,x0)
+
     
     #Read the conditions for each well from the uploaded design file
     condition <-  as.data.frame(df_upload_design())[1:8,2:13]  %>% unlist(use.names = FALSE)
     
-    df <- data.frame(Wells,condition)
+    df <- data.frame(df_plate,condition)
     
     df <- df %>% separate(condition, into =c("condition", "treatment1", "treatment2"), sep="_")
     
@@ -491,6 +488,7 @@ df_tidy_design <- reactive ({
     df <- df_upload_design()
     
   }
+  observe({print(head(df))})
   
   return(df)
   
@@ -513,6 +511,9 @@ df_combined <- reactive({
   } else {
     df_tidy_design <- df_tidy_design()
   }
+  
+  #Remove columns that are double
+  df_tidy_design <- df_tidy_design %>% select(-c(row,column))
   
   #Join the design with the data
   df <- full_join(df_tidy_design, df_tidy_data(), by='Wells')
@@ -608,7 +609,7 @@ plotdata <-  reactive({
   df <- df_combined()
   # observe({print(head(df))})
   
-  
+
   
   ############################ TODO ##############
   # Grid
@@ -618,8 +619,19 @@ plotdata <-  reactive({
     df <- df %>% filter(condition!='control')
   }
   
-  p <-  ggplot(df, aes_string(x = input$compare, y = "`Fold Change`")) +
-    geom_jitter(shape = 16, width=0.2, height=0.0, cex=input$pointSize, color="black", alpha=input$alphaInput) 
+  # This ensures correct order when plot is rotated 90 degrees
+  if (input$rotate_plot == TRUE) {
+    df$treatment2 <- factor(df$treatment2, levels=rev(unique(sort(df$treatment2))))
+    # df$control <- factor(df$control, levels=rev(unique(sort(df$control))))
+
+  }
+  
+  
+  # reorder(y, desc(y)))
+  
+  p <-  ggplot(df, aes_string(x = input$compare, y = "`Fold Change`")) 
+  
+  p <- p + geom_jitter(shape = 16, width=0.2, height=0.0, cex=input$pointSize, color="black", alpha=input$alphaInput) 
   
   if (input$summaryInput !="none") {
    p <-  p + stat_summary(fun = input$summaryInput, fun.min =input$summaryInput, fun.max = input$summaryInput, geom = "errorbar", width = 0.5, size=1) 
@@ -663,7 +675,7 @@ plotdata <-  reactive({
   
   p <- p + coord_cartesian(ylim=c(rng[1],rng[2]))
   #### If selected, rotate plot 90 degrees CW ####
-  if (input$rotate_plot == TRUE) { p <- p + coord_flip(ylim=c(rng[1],rng[2]))}
+  if (input$rotate_plot == TRUE) { p <- p + coord_flip(ylim=c(rng[1],rng[2]))  }
   
   # if title specified
   if (input$add_title)
@@ -690,12 +702,32 @@ plotplate <- reactive({
   
   # signal <- input$signal
   
-  plate_plot <- ggplot(data=df, aes(x=x,y=reorder(y, desc(y))))+geom_point(aes_string(color=input$signal), size=12)+coord_fixed()+scale_x_continuous(breaks=seq(1, 12), position = "top")+scale_color_viridis_c()
-  plate_plot <- plate_plot + theme_light() + labs(x = NULL, y = NULL)
+  plate_plot <-  ggplot(data=df, aes(x=column,y=reorder(row, desc(row)))) +geom_point(aes_string(color=input$signal), size=15)+coord_fixed()+scale_x_continuous(breaks=seq(1, 12), position = "top")+scale_color_viridis_c()
+  plate_plot <- plate_plot + theme_light() + labs(x = NULL, y = NULL) 
   plate_plot
   
   
 })
+
+plotdesign <- reactive({
+  df <- df_tidy_design()
+  
+  plate_plot <- ggplot(data=df, aes(x=column,y=reorder(row, desc(row)))) +geom_point(aes_string(color="treatment1"), size=22, stroke=0,shape=15, alpha=0.4) + scale_color_manual(values=c("grey10","grey40","grey70","grey90"))
+    
+
+    
+  # plate_plot <- plate_plot+geom_point(aes_string(color="treatment2", shape="treatment1"), size=6)
+  
+  plate_plot <- plate_plot+geom_label(aes(label=condition, fill=treatment2), alpha=0.8)
+  
+  plate_plot <- plate_plot + coord_fixed()+scale_x_continuous(breaks=seq(1, 12), position = "top")
+  plate_plot <- plate_plot + theme_light() + labs(x = NULL, y = NULL) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+  plate_plot
+  
+  
+})
+
+
 
 #### DISPLAY UPLOADED DATA (as provided) ##################
 
@@ -736,8 +768,12 @@ output$data_uploaded <- renderDataTable(
 )
 
 ##### Render the plot ############
-output$coolplot <- renderPlot(width = 500, height = 300, {
+output$coolplot <- renderPlot(width = 700, {
   plot(plotplate())
+})
+
+output$designplot <- renderPlot(width = 700, {
+  plot(plotdesign())
 })
 
 

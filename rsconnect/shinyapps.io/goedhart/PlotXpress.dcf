@@ -5,9 +5,9 @@ account: goedhart
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2553826
-bundleId: 3427064
+bundleId: 3450143
 url: https://goedhart.shinyapps.io/plotXpress/
-when: 1595526396.31445
+when: 1596024966.08228
 asMultiple: FALSE
 asStatic: FALSE
 ignoredFiles: .gitattributes|LICENSE|plotXpress_example.png
