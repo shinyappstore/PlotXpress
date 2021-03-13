@@ -326,7 +326,7 @@ df_upload_design <- reactive({
         data <- read_excel(file_in$datapath , na = c("",".","NA", "NaN", "#N/A", "#VALUE!"))
       } else if (fileext == "txt" || fileext=="csv") {
         
-        data <- read.csv(file=file_in$datapath, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+        data <- read.csv(file=file_in$datapath, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"),header = TRUE, stringsAsFactors = FALSE)
 
       }
     }
@@ -620,11 +620,14 @@ plotdata <-  reactive({
   }
   
   # This ensures correct order when plot is rotated 90 degrees
-  if (input$rotate_plot == TRUE) {
-    df$treatment2 <- factor(df$treatment2, levels=rev(unique(sort(df$treatment2))))
-    # df$control <- factor(df$control, levels=rev(unique(sort(df$control))))
-
-  }
+  # if (input$rotate_plot == TRUE) {
+  #   df$treatment2 <- factor(df$treatment2, levels=rev(unique(sort(df$treatment2))))
+  #   # df$treatment2 <- factor(df$treatment2, levels=rev(levels(df$treatment2)))
+  #   
+  #   
+  #       # df$control <- factor(df$control, levels=rev(unique(sort(df$control))))
+  # 
+  # }
   
   
   # reorder(y, desc(y)))
@@ -675,7 +678,11 @@ plotdata <-  reactive({
   
   p <- p + coord_cartesian(ylim=c(rng[1],rng[2]))
   #### If selected, rotate plot 90 degrees CW ####
-  if (input$rotate_plot == TRUE) { p <- p + coord_flip(ylim=c(rng[1],rng[2]))  }
+  if (input$rotate_plot == TRUE) { 
+    p <- p + coord_flip(ylim=c(rng[1],rng[2]))
+    # This ensures correct order when plot is rotated 90 degrees
+    p <- p+scale_x_discrete(limits = rev)
+  }
   
   # if title specified
   if (input$add_title)
