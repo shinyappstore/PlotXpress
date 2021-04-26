@@ -35,9 +35,9 @@ library(stringr)
 
 
 df_example <- read_excel("DualLuc_example_data.xlsx", sheet = "Results")
-df_design_all <- read_excel("Design_example.xlsx")
-df_design_Hek <- read_excel("Design_example_Hek.xlsx")
-df_design_neuron <- read_excel("Design_example_neuron.xlsx")
+df_design <- read.csv("Tidy_design.csv")
+# df_design_Hek <- read_excel("Design_example_Hek.xlsx")
+# df_design_neuron <- read_excel("Design_example_neuron.xlsx")
 
 #Define dataframe for
 column <- rep(1:12, each=8)
@@ -60,20 +60,47 @@ ui <- fluidPage(
                  
                  conditionalPanel(
                    condition = "input.tabs=='Data upload'",
-                   h4("Data upload"),
+                   h3("Data upload"),
+                   
                    radioButtons(
-                     "data_input", "",
-                     choices = list("Example data" = 1, "Upload Promega GloMax xlsx file" = 3), selected =  1),
+                     "data_type", label = "",
+                     choices = list("Promega Glomax data and separate experimental design" = 1, "Data in a single tidy csv" = 2), selected =  1),
+                   
+                   
                    conditionalPanel(
-                     condition = "input.data_input=='1'", h6("Example data from a Dual Luciferase assay acquired with Promega GloMax")
+                     condition = "input.data_type=='1'",
+                   
+                                     radioButtons(
+                                       "data_input", "1. Promega Glomax data",
+                                       choices = list("Example Promega GloMax data" = 1, "Upload Promega GloMax xlsx file" = 3), selected =  1),
+                                     conditionalPanel(
+                                       condition = "input.data_input=='1'", h5("Example data from a Dual Luciferase assay acquired with Promega GloMax")
+                                       
+                                     )),
+                   
+                   
+                   conditionalPanel(
+                     condition = "input.data_type=='2'",
                      
-                   ),
+                     h4("Upload a tidy CSV")),
+                   
+                   
+                   
                    conditionalPanel(
-                     condition = "input.data_input=='3'", fileInput("upload", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+                     condition = "input.data_input=='3' && input.data_type=='1'", fileInput("upload", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
 
                      NULL
                    ),
-
+                   conditionalPanel(
+                     condition = "input.data_type=='2'", fileInput("upload_tidy", NULL, multiple = FALSE, accept = c(".txt", ".csv")),
+                     selectInput("Firefly", label = "Intensity data:", choices = list("-"), selected = "-"),
+                     selectInput("Renilla", label = "Reference data (Optional):", choices = list("-"), selected = "-"),
+                     selectInput("Condition", label = "Conditions:", choices = list("-"), selected = "-"),                     
+                     selectInput("Treatment1", label = "Treatment1 (Optional):", choices = list("-"), selected = "-"),                     
+                     selectInput("Treatment2", label = "Treatment2 (Optional):", choices = list("-"), selected = "-"),                     
+                     
+                     NULL
+                   ),
                    # 
                    # ### csv via URL as input      
                    # conditionalPanel(
@@ -82,40 +109,41 @@ ui <- fluidPage(
                    #   textInput("URL", "URL", value = ""), 
                    #   NULL
                    # ),
-                   selectInput("signal", label = "Select signal:", choices = list("renilla","firefly","renilla/firefly","firefly/renilla"
-                                                                                 
-                   )),
 
-                   # conditionalPanel(
-                   #   condition = "input.tidyInput==false", (downloadButton("downloadData", "Download in tidy format (csv)"))),
-                   
-                   hr(),
-                   radioButtons(
-                     "design_input", "Experimental design",
-                     choices = list("Example design (all)" = 1, "Example design (subset)" = 2,
-                                    "Upload in plate format (CSV, TXT, Excel)" = 3, "Upload in tidy format (CSV)"=4), selected =  1),
                    
                    conditionalPanel(
-                     condition = "input.design_input=='3' || input.design_input=='4'", fileInput("upload_design", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
-                     hr(),
-
-
-                     NULL
-                   ),
-                   selectInput("show_condition", "Show the experimental condition:", choices = "all", selected = "all"),
-                   hr(),
-                   selectInput("filter_column", "Filter based on this parameter:", choices = "-", selected = "-"),
-                   selectInput("remove_these_conditions", "Deselect these conditions:", "", multiple = TRUE),
-
-                   conditionalPanel(
-                     condition = "input.info_data==true",
-                     img(src = 'Data_format.png', width = '100%'), h5(""), a("Background info for converting wide data to tidy format", href = "http://thenode.biologists.com/converting-excellent-spreadsheets-tidy-data/education/")
-                   ),
-                   hr(),
-                   downloadButton("downloadData", "Download combined data (CSV)")
-
+                     condition = "input.data_type=='1'",
+                   
+                               # selectInput("signal", label = "Select data to display:", choices = list("renilla","firefly","renilla/firefly","firefly/renilla")),
+            
+                               # conditionalPanel(
+                               #   condition = "input.tidyInput==false", (downloadButton("downloadData", "Download in tidy format (csv)"))),
+                               
+                               hr(),
+                               radioButtons(
+                                 "design_input", "2. Experimental design",
+                                 choices = list("Example design (of Glomax example data)" = 1, "Upload in tidy format (CSV)"=2), selected =  1),
+                               
+                               conditionalPanel(
+                                 condition = "input.design_input=='2'", fileInput("upload_design", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+                                 # hr(),
+            
+            
+                                 NULL
+                               ),
+                               # selectInput("show_condition", "Show the experimental condition:", choices = "all", selected = "all"),
+                               hr(),
+                     h3("Data selection"),
+                               selectInput("filter_column", "Filter based on this parameter:", choices = "-", selected = "-"),
+                               selectInput("remove_these_conditions", "Deselect these conditions:", "", multiple = TRUE),
+            
+                               hr(),
+                               downloadButton("downloadData", "Download combined data in tidy format (CSV)")
+            
+                             ),
+                   NULL
                  ),
-                 
+                             
                  conditionalPanel(
                    condition = "input.tabs=='Plot'",
                    h4("Data presentation"),
@@ -264,7 +292,24 @@ ui <- fluidPage(
     mainPanel(
       
       tabsetPanel(id="tabs",
-                  tabPanel("Data upload", h4("Readings from the 96-well plate"),plotOutput("coolplot"),h4("Sample description per well - plot"), plotOutput("designplot"),h4("Sample description per well - table"),dataTableOutput("data_uploaded")),
+                  tabPanel("Data upload",
+                           
+                           conditionalPanel(
+                             condition = "input.data_type=='1'",
+
+                             h4("Readings from the 96-well plate"),selectInput("signal", label = NULL, choices = list("renilla","firefly","renilla/firefly","firefly/renilla")),
+                           plotOutput("coolplot"),                               
+
+                           # h4("Sample description per well - plot"),
+                           # plotOutput("designplot"),
+                           h4("Sample description per well:"),
+                           dataTableOutput("data_uploaded",
+                                           NULL)),
+                           conditionalPanel(
+                             condition = "input.data_type=='2'", h4("Tidy data uploaded:"),dataTableOutput("tidy_data_uploaded"))
+                             
+                           
+                  ),
                   
 
                   
@@ -300,20 +345,30 @@ server <- function(input, output, session) {
   
   
   isolate(vals$count <- vals$count + 1)
+  
+  
+  f.selected <- '-'
+  r.selected <- '-'
+  c.selected <- '-'
+  t1.selected <- '-'
+  t2.selected <- '-'
+  
+  
+  
+  
   ###### DATA INPUT ###################
   
   
 df_upload_design <- reactive({
     
     if (input$design_input == 1) {
-      data <- df_design_all
+      data <- df_design
+
     } else if (input$design_input == 2) {
-      data <- df_design_neuron
-    } else if (input$design_input == 3 || input$design_input == 4) {
 
        file_in <- input$upload_design
     if (is.null(input$upload_design)) {
-      isolate({data <- df_design_all})
+      isolate({data <- df_design})
     } else {
       #Isolate extenstion and convert to lowercase
       filename_split <- strsplit(file_in$datapath, '[.]')[[1]]
@@ -331,19 +386,22 @@ df_upload_design <- reactive({
       }
     }
     }
+    data <- data %>% separate(Wells, c("row", "column"), sep=1, remove = FALSE)
     return(data)
   })
   
 df_upload_data <- reactive({
+  
+  ### Glomax Data input
+  if(input$data_type == 1) {
+    
     if (input$data_input == 1) {
       data <- df_example
-    }  else if (input$data_input == 2) {
-      data <- df_example 
     } else if (input$data_input == 3) {
       file_in <- input$upload
       # Avoid error message while file is not uploaded yet
       if (is.null(input$upload)) {
-        return(data.frame(x = "Click 'Browse...' to select a datafile or drop file onto 'Browse' button"))
+        return(data.frame(x=1))
         # } else if (input$submit_datafile_button == 0) {
         #   return(data.frame(x = "Press 'submit datafile' button"))
       } else {
@@ -352,57 +410,34 @@ df_upload_data <- reactive({
         filename_split <- strsplit(file_in$datapath, '[.]')[[1]]
         fileext <- tolower(filename_split[length(filename_split)])
         
-        # observe({print(fileext)})
-        
-        # isolate({
-        # data <- read.csv(file=file_in$datapath, sep = input$upload_delim, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
-        
-
-          if (fileext=="xls" || fileext=="xlsx") {
-
+        if (fileext=="xls" || fileext=="xlsx") {
+          
           # names <- excel_sheets(path = input$upload$datapath)
           # updateSelectInput(session, "sheet_names", choices = names)
           data <- read_excel(file_in$datapath, sheet = "Results" , na = c("",".","NA", "NaN", "#N/A", "#VALUE!"))
         } 
         
         # })
-      }
-      
-    } else if (input$data_input == 5) {
-      
-      #Read data from a URL
-      #This requires RCurl
-      if(input$URL == "") {
-        return(data.frame(x = "Enter a full HTML address, for example: https://zenodo.org/record/2545922/files/FRET-efficiency_mTq2.csv"))
-      } else if (url.exists(input$URL) == FALSE) {
-        return(data.frame(x = paste("Not a valid URL: ",input$URL)))
-      } else {data <- read_csv(input$URL)}
-      
-      #Read the data from textbox
-    } else if (input$data_input == 4) {
-      if (input$data_paste == "") {
-        data <- data.frame(x = "Copy your data into the textbox,
-                           select the appropriate delimiter, and
-                           press 'Submit data'")
-      } else {
-        if (input$submit_data_button == 0) {
-          return(data.frame(x = "Press 'submit data' button"))
-        } else {
-          isolate({
-            data <- read_delim(input$data_paste,
-                               delim = input$text_delim,
-                               col_names = TRUE)
-          })
-        }
-      }
+      }}
+    
+    
+    ### Tidy Data input - general
+  } else if (input$data_type == 2) {
+    file_in <- input$upload_tidy
+    # Avoid error message while file is not uploaded yet
+    if (is.null(input$upload_tidy)) {
+      return(data.frame(x = "Upload a CSV file with at least two columns: one with conditions and one with values (intensities)"))
+      # } else if (input$submit_datafile_button == 0) {
+      #   return(data.frame(x = "Press 'submit datafile' button"))
+    } else {
+      data <- read.csv(file=file_in$datapath, na.strings=c("",".","NA", "NaN", "#N/A", "#VALUE!"))
+    }
+    f.selected <<- 'firefly'
+    r.selected <<- 'renilla'
+    c.selected <<- 'condition'
+    t1.selected <<- 'treatment1'
+    t2.selected <<- 'treatment2'
   }
-    # updateSelectInput(session, "data_remove", choices = names(data))
-    
-    #Replace space and dot of header names by underscore
-    # data <- data %>%  
-    #   select_all(~gsub("\\s+|\\.", "_", .))
-    
-
   
     return(data)
 })
@@ -441,12 +476,13 @@ output$downloadPlotPNG <- downloadHandler(
 
 
 
-##### Read data from Promega GloMax #########
+
 df_tidy_data <- reactive({     
 
+  
     df <- df_upload_data()
     if (dim(df)[1]<2) {
-      return(data.frame(y,x,firefly=1,renilla=1))
+      return(data.frame(df_plate, firefly=1,renilla=1))
     }
     
     ######## SUBSET data from Promega output ###########
@@ -463,36 +499,37 @@ df_tidy_data <- reactive({
     df_filter <- data.frame(df_plate,firefly,renilla)
 
     return(df_filter)
+  
     
 })
 
-df_tidy_design <- reactive ({
-  
-  # df <- df_upload_design()
-  
-  if (input$design_input != 4) {
-
-    
-    #Read the conditions for each well from the uploaded design file
-    condition <-  as.data.frame(df_upload_design())[1:8,2:13]  %>% unlist(use.names = FALSE)
-    
-    df <- data.frame(df_plate,condition)
-    
-    df <- df %>% separate(condition, into =c("condition", "treatment1", "treatment2"), sep="_")
-    
-    #Replace NA by 'empty' treatments
-    df <- df %>% replace_na(list(treatment1="-",treatment2 = "-"))
-    
-  } else if (input$design_input == 4) {
-    
-    df <- df_upload_design()
-    
-  }
-  observe({print(head(df))})
-  
-  return(df)
-  
-})
+# df_tidy_design <- reactive ({
+#   
+#   # df <- df_upload_design()
+#   
+#   if (input$design_input != 4) {
+# 
+#     
+#     #Read the conditions for each well from the uploaded design file
+#     condition <-  as.data.frame(df_upload_design())[1:8,2:13]  %>% unlist(use.names = FALSE)
+#     
+#     df <- data.frame(df_plate,condition)
+#     
+#     df <- df %>% separate(condition, into =c("condition", "treatment1", "treatment2"), sep="_")
+#     
+#     #Replace NA by 'empty' treatments
+#     df <- df %>% replace_na(list(treatment1="-",treatment2 = "-"))
+#     
+#   } else if (input$design_input == 4) {
+#     
+#     df <- df_upload_design()
+#     
+#   }
+#   observe({print(head(df))})
+#   
+#   return(df)
+#   
+# })
 
 
 df_combined <- reactive({    
@@ -507,18 +544,62 @@ df_combined <- reactive({
     
     #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
     # https://dplyr.tidyverse.org/reference/filter.html
-    df_tidy_design <- df_tidy_design() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
+    df_upload_design <- df_upload_design() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
   } else {
-    df_tidy_design <- df_tidy_design()
+    df_upload_design <- df_upload_design()
   }
   
   #Remove columns that are double
-  df_tidy_design <- df_tidy_design %>% select(-c(row,column))
+  # df_upload_design <- df_upload_design %>% select(-c(row,column))
   
   #Join the design with the data
-  df <- full_join(df_tidy_design, df_tidy_data(), by='Wells')
+  df <- full_join(df_upload_design, df_tidy_data(), by='Wells')
 
+  
+  })
+
+df_processed <- reactive({   
+  
+  if (input$data_type == 2) {
+  
+  F_choice <- input$Firefly
+  R_choice <- input$Renilla
+  Condition <- input$Condition
+  Treatment1 <- input$Treatment1
+  Treatment2 <- input$Treatment2
+  
+  df <- df_upload_data() %>% select(firefly = !!F_choice ,
+                                    condition= !!Condition)
+
+  
+  if (!!R_choice =="-") {
+    observe({print("no renilla reference")})
+    df$renilla <- 1
+  } else if (!!R_choice !="-") {
+      x <- df_upload_data() %>% select(renilla = !!R_choice)
+      df$renilla <- x$renilla
+    }
+  
+  if (!!Treatment1 =="-") {
+    df$treatment1 <- '-'
+    
+  } else if (!!Treatment1 !="-") {
+    x <- df_upload_data() %>% select(treatment1 = !!Treatment1)
+    df$treatment1 <- x$treatment1
+  }
+  
+  if (!!Treatment2 =="-") {
+    df$treatment2 <- '-'
+  } else if (!!Treatment2 !="-") {
+    x <- df_upload_data() %>% select(treatment2 = !!Treatment2)
+    df$treatment2 <- x$treatment2
+  }
+
+  } else if (input$data_type == 1) {
+    df <- df_combined()
+  }
   #######Process the data ######
+  observe({print(head(df))})
   
   #Caclulcate the ratio of readout over internal control
   df <- df %>% mutate(FR=firefly/renilla) 
@@ -533,39 +614,77 @@ df_combined <- reactive({
   df <- df %>% full_join(df_norm, by=c("treatment1","treatment2")) %>% na.omit(condition)
   
   df <- df %>% mutate(`Fold Change` = FR/norm)
-
+  
   return(df)
   
-  })
-
+  
+})
 
 ##### Get Variables from the input ##############
 
 observe({
-  df <- df_tidy_design()
-  var_names  <- names(df)
-  varx_list <- c("-", var_names)
+  df <- df_upload_data()
+  # var_names  <- names(df)
+  # var_list <- c("-", var_names)
+  
+
 #   
-#   # Get the names of columns that are factors. These can be used for coloring the data with discrete colors
-#   nms_fact <- names(Filter(function(x) is.factor(x) || is.integer(x) ||
-#                              is.logical(x) ||
-#                              is.character(x),
-#                            df))
-#   nms_var <- names(Filter(function(x) is.integer(x) ||
-#                             is.numeric(x) ||
-#                             is.double(x),
-#                           df))
+  # Get the names of columns that are factors. These can be used for coloring the data with discrete colors
+  nms_fact <- names(Filter(function(x) is.factor(x) || is.integer(x) ||
+                             is.logical(x) ||
+                             is.character(x),
+                           df))
+  nms_var <- names(Filter(function(x) is.integer(x) ||
+                            is.numeric(x) ||
+                            is.double(x),
+                          df))
 #   
-#   vary_list <- c("-",nms_var)
+    numbers_list <- c("-",nms_var)
+    factors_list <- c("-",nms_fact)
 #   mapping_list_num <- c("No",nms_var)
 #   mapping_list_fact <- c("No",nms_fact)
 #   mapping_list_all <- c("No",var_names)
-    facet_list_factors <- c(".",var_names)
+    # facet_list_factors <- c(".",var_names)
 #   
-  # updateSelectInput(session, "facet_row", choices = facet_list_factors)
-  # updateSelectInput(session, "facet_col", choices = facet_list_factors)
-  updateSelectInput(session, "filter_column", choices = varx_list)
+  updateSelectInput(session, "Firefly", choices = numbers_list, selected = f.selected)
+  updateSelectInput(session, "Renilla", choices = numbers_list, selected = r.selected)
+  updateSelectInput(session, "Condition", choices = factors_list, selected = c.selected)
+  updateSelectInput(session, "Treatment1", choices = factors_list, selected = t1.selected)
+  updateSelectInput(session, "Treatment2", choices = factors_list, selected = t2.selected)
+  
+  
+  
+  df2 <- df_upload_design()
+  var_names2 <- names(df2)
+  var_list <- c("-", var_names2)
+  updateSelectInput(session, "filter_column", choices = var_list)
 })
+
+
+# Toggle facetting based on the number of treatments in the data
+
+# observeEvent(input$data_input, {
+#   if (input$data_input=="3")  {
+#     if (df_upload_data() != "xx") {
+#       if (unique(df$treatment1) == '-') {
+#         updateSelectInput(session, "facet_row", selected = ".")
+#       }
+#       
+#     }
+#     
+#   }
+#   else if (input$data_input!="3")  {
+# 
+#     if (df_upload_data() != "xx") {
+#       if (unique(df$treatment1) == '-') {
+#         updateSelectInput(session, "facet_row", selected = ".")
+#       }
+#       
+#     }
+#     
+#     
+#   }
+# })
 
 ########### Get the list of factors from a variable ############
 
@@ -575,18 +694,13 @@ observeEvent(input$filter_column != '-', {
   
   if (filter_column == "-") {filter_column <- NULL}
   
-  koos <- df_tidy_design() %>% select(for_filtering = !!filter_column)
+  koos <- df_upload_design() %>% select(for_filtering = !!filter_column)
   
   conditions_list <- levels(factor(koos$for_filtering))
   # observe(print((conditions_list)))
   updateSelectInput(session, "remove_these_conditions", choices = conditions_list)
   
 })
-
-
-
-
-
 
 
 
@@ -597,7 +711,7 @@ output$downloadData <- downloadHandler(
     paste("PlotXpress_Tidy", ".csv", sep = "")
   },
   content = function(file) {
-    write.csv(df_combined(), file, row.names = FALSE)
+    write.csv(df_processed(), file, row.names = FALSE)
   }
 )
 
@@ -605,11 +719,9 @@ output$downloadData <- downloadHandler(
 
 ######## PREPARE PLOT FOR DISPLAY ##########
 plotdata <-  reactive({
-  
-  df <- df_combined()
-  # observe({print(head(df))})
-  
 
+  df <- df_processed()
+  # observe({print(head(df))})
   
   ############################ TODO ##############
   # Grid
@@ -618,19 +730,6 @@ plotdata <-  reactive({
   if (input$show_control == FALSE) {
     df <- df %>% filter(condition!='control')
   }
-  
-  # This ensures correct order when plot is rotated 90 degrees
-  # if (input$rotate_plot == TRUE) {
-  #   df$treatment2 <- factor(df$treatment2, levels=rev(unique(sort(df$treatment2))))
-  #   # df$treatment2 <- factor(df$treatment2, levels=rev(levels(df$treatment2)))
-  #   
-  #   
-  #       # df$control <- factor(df$control, levels=rev(unique(sort(df$control))))
-  # 
-  # }
-  
-  
-  # reorder(y, desc(y)))
   
   p <-  ggplot(df, aes_string(x = input$compare, y = "`Fold Change`")) 
   
@@ -705,32 +804,32 @@ plotdata <-  reactive({
 })
 
 plotplate <- reactive({
+  
   df <- df_tidy_data()
   
   # signal <- input$signal
   
   plate_plot <-  ggplot(data=df, aes(x=column,y=reorder(row, desc(row)))) +geom_point(aes_string(color=input$signal), size=15)+coord_fixed()+scale_x_continuous(breaks=seq(1, 12), position = "top")+scale_color_viridis_c()
-  plate_plot <- plate_plot + theme_light() + labs(x = NULL, y = NULL) 
+  plate_plot <- plate_plot + theme_light() + labs(x = NULL, y = NULL)  + theme(legend.position = "none")
   plate_plot
   
   
 })
 
 plotdesign <- reactive({
-  df <- df_tidy_design()
+  df <- df_upload_design()
+  df$column <- as.numeric(df$column)
+  plate_plot <- ggplot(data=df, aes(x=column,y=reorder(row, desc(row)))) +geom_point(aes_string(color="treatment1"), size=22, stroke=0,shape=15, alpha=0.4) + scale_color_grey(start=0.3, end=0.7)
   
-  plate_plot <- ggplot(data=df, aes(x=column,y=reorder(row, desc(row)))) +geom_point(aes_string(color="treatment1"), size=22, stroke=0,shape=15, alpha=0.4) + scale_color_manual(values=c("grey10","grey40","grey70","grey90"))
-    
-
-    
   # plate_plot <- plate_plot+geom_point(aes_string(color="treatment2", shape="treatment1"), size=6)
+
   
   plate_plot <- plate_plot+geom_label(aes(label=condition, fill=treatment2), alpha=0.8)
-  
-  plate_plot <- plate_plot + coord_fixed()+scale_x_continuous(breaks=seq(1, 12), position = "top")
-  plate_plot <- plate_plot + theme_light() + labs(x = NULL, y = NULL) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) 
+
+  plate_plot <- plate_plot + coord_fixed()+scale_x_continuous(breaks=seq(1, 12), position = "top", limits=c(1,12))
+  plate_plot <- plate_plot + theme_light() + labs(x = NULL, y = NULL) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),legend.position = "none")
   plate_plot
-  
+
   
 })
 
@@ -776,6 +875,11 @@ output$data_uploaded <- renderDataTable(
 
 ##### Render the plot ############
 output$coolplot <- renderPlot(width = 700, {
+  # dft <- df_upload_data()
+  # if (dim(dft)[1]<2) {
+  #   observe({print("no data")})
+  #   return(NULL)
+  # }
   plot(plotplate())
 })
 
@@ -787,6 +891,18 @@ output$designplot <- renderPlot(width = 700, {
 output$dataplot <- renderPlot(width = width, height = height, {
   plot(plotdata())
 })
+
+#### DISPLAY UPLOADED DATA (as provided) ##################
+
+output$tidy_data_uploaded <- renderDataTable(
+  
+  #    observe({ print(input$tidyInput) })
+  df_upload_data(),
+  rownames = FALSE,
+  options = list(pageLength = 10,
+                 lengthMenu = c(10, 100, 1000, 10000), columnDefs = list(list(className = 'dt-left', targets = '_all'))),
+  editable = FALSE,selection = 'none'
+)
 
 # ########### Update count #########
 # Reactively update the client.
