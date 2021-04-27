@@ -125,14 +125,18 @@ ui <- fluidPage(
                                  choices = list("Example design (of Glomax example data)" = 1, "Upload in tidy format (CSV)"=2), selected =  1),
                                
                                conditionalPanel(
-                                 condition = "input.design_input=='2'", fileInput("upload_design", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+                                 condition = "input.design_input=='2'",
+                                 fileInput("upload_design", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
+                                 a("Design template (CSV) available here", href="https://github.com/ScienceParkStudyGroup/PlotXpress/blob/master/Tidy_design.csv", target="_blank"), 
                                  # hr(),
+
             
             
                                  NULL
                                ),
                                # selectInput("show_condition", "Show the experimental condition:", choices = "all", selected = "all"),
-                               hr(),
+                               hr()
+                     ),
                      h3("Data selection"),
                                selectInput("filter_column", "Filter based on this parameter:", choices = "-", selected = "-"),
                                selectInput("remove_these_conditions", "Deselect these conditions:", "", multiple = TRUE),
@@ -140,7 +144,7 @@ ui <- fluidPage(
                                hr(),
                                downloadButton("downloadData", "Download combined data in tidy format (CSV)")
             
-                             ),
+                             ,
                    NULL
                  ),
                              
@@ -474,12 +478,8 @@ output$downloadPlotPNG <- downloadHandler(
   contentType = "application/png" # MIME type of the image
 )
 
-
-
-
 df_tidy_data <- reactive({     
 
-  
     df <- df_upload_data()
     if (dim(df)[1]<2) {
       return(data.frame(df_plate, firefly=1,renilla=1))
@@ -532,7 +532,18 @@ df_tidy_data <- reactive({
 # })
 
 
-df_combined <- reactive({    
+df_combined <- reactive({
+  
+  
+  ###### Combine design and data for Glomax data upload
+  if (input$data_type==1) {
+    df <- full_join(df_upload_design(), df_tidy_data(), by='Wells')
+  } else {
+    (df <- df_upload_data())
+  }
+})
+
+df_filtered <- reactive({
   
   ##### FILTER Conditions ######
   if (!is.null(input$remove_these_conditions) && input$filter_column != "-") {
@@ -544,19 +555,21 @@ df_combined <- reactive({
     
     #Remove the columns that are selected (using filter() with the exclamation mark preceding the condition)
     # https://dplyr.tidyverse.org/reference/filter.html
-    df_upload_design <- df_upload_design() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
+    df_combined <- df_combined() %>% filter(!.data[[filter_column[[1]]]] %in% !!remove_these_conditions)
   } else {
-    df_upload_design <- df_upload_design()
+    df_combined <- df_combined()
   }
   
   #Remove columns that are double
   # df_upload_design <- df_upload_design %>% select(-c(row,column))
   
-  #Join the design with the data
-  df <- full_join(df_upload_design, df_tidy_data(), by='Wells')
-
   
-  })
+  
+  
+  
+})
+
+
 
 df_processed <- reactive({   
   
@@ -568,7 +581,7 @@ df_processed <- reactive({
   Treatment1 <- input$Treatment1
   Treatment2 <- input$Treatment2
   
-  df <- df_upload_data() %>% select(firefly = !!F_choice ,
+  df <- df_filtered() %>% select(firefly = !!F_choice ,
                                     condition= !!Condition)
 
   
@@ -576,7 +589,7 @@ df_processed <- reactive({
     observe({print("no renilla reference")})
     df$renilla <- 1
   } else if (!!R_choice !="-") {
-      x <- df_upload_data() %>% select(renilla = !!R_choice)
+      x <- df_filtered() %>% select(renilla = !!R_choice)
       df$renilla <- x$renilla
     }
   
@@ -584,19 +597,19 @@ df_processed <- reactive({
     df$treatment1 <- '-'
     
   } else if (!!Treatment1 !="-") {
-    x <- df_upload_data() %>% select(treatment1 = !!Treatment1)
+    x <- df_filtered() %>% select(treatment1 = !!Treatment1)
     df$treatment1 <- x$treatment1
   }
   
   if (!!Treatment2 =="-") {
     df$treatment2 <- '-'
   } else if (!!Treatment2 !="-") {
-    x <- df_upload_data() %>% select(treatment2 = !!Treatment2)
+    x <- df_filtered() %>% select(treatment2 = !!Treatment2)
     df$treatment2 <- x$treatment2
   }
 
   } else if (input$data_type == 1) {
-    df <- df_combined()
+    df <- df_filtered()
   }
   #######Process the data ######
   observe({print(head(df))})
@@ -653,8 +666,11 @@ observe({
   updateSelectInput(session, "Treatment2", choices = factors_list, selected = t2.selected)
   
   
-  
-  df2 <- df_upload_design()
+  if (input$data_type ==1) {
+    df2 <- df_upload_design()
+  } else if (input$data_type ==2) {
+    df2 <- df_upload_data()
+  }
   var_names2 <- names(df2)
   var_list <- c("-", var_names2)
   updateSelectInput(session, "filter_column", choices = var_list)
@@ -694,7 +710,7 @@ observeEvent(input$filter_column != '-', {
   
   if (filter_column == "-") {filter_column <- NULL}
   
-  koos <- df_upload_design() %>% select(for_filtering = !!filter_column)
+  koos <- df_combined() %>% select(for_filtering = !!filter_column)
   
   conditions_list <- levels(factor(koos$for_filtering))
   # observe(print((conditions_list)))
@@ -897,7 +913,7 @@ output$dataplot <- renderPlot(width = width, height = height, {
 output$tidy_data_uploaded <- renderDataTable(
   
   #    observe({ print(input$tidyInput) })
-  df_upload_data(),
+  df_filtered(),
   rownames = FALSE,
   options = list(pageLength = 10,
                  lengthMenu = c(10, 100, 1000, 10000), columnDefs = list(list(className = 'dt-left', targets = '_all'))),
