@@ -1,0 +1,52 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "JoachimGoedhart",
+      "name": "Joachim Goedhart",
+      "avatar_url": "https://avatars.githubusercontent.com/u/39348589?v=4",
+      "profile": "https://huygens.science.uva.nl/",
+      "contributions": [
+        "code",
+        "bug",
+        "example",
+        "tool",
+        "test"
+      ]
+    },
+    {
+      "login": "ebrando",
+      "name": "ebrando",
+      "avatar_url": "https://avatars.githubusercontent.com/u/52273820?v=4",
+      "profile": "https://github.com/ebrando",
+      "contributions": [
+        "data",
+        "example",
+        "ideas",
+        "projectManagement",
+        "userTesting"
+      ]
+    },
+    {
+      "login": "mgalland",
+      "name": "Marc Galland",
+      "avatar_url": "https://avatars.githubusercontent.com/u/10114186?v=4",
+      "profile": "http://www.mgalland.info",
+      "contributions": [
+        "ideas",
+        "projectManagement",
+        "test"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "PlotXpress",
+  "projectOwner": "ScienceParkStudyGroup",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
