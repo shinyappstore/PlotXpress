@@ -41,7 +41,6 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tr>
     <td align="center"><a href="https://huygens.science.uva.nl/"><img src="https://avatars.githubusercontent.com/u/39348589?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Joachim Goedhart</b></sub></a><br /><a href="https://github.com/ScienceParkStudyGroup/PlotXpress/commits?author=JoachimGoedhart" title="Code">💻</a> <a href="https://github.com/ScienceParkStudyGroup/PlotXpress/issues?q=author%3AJoachimGoedhart" title="Bug reports">🐛</a> <a href="#example-JoachimGoedhart" title="Examples">💡</a> <a href="#tool-JoachimGoedhart" title="Tools">🔧</a> <a href="https://github.com/ScienceParkStudyGroup/PlotXpress/commits?author=JoachimGoedhart" title="Tests">⚠️</a></td>
-  </tr>
 </table>
 
 <!-- markdownlint-restore -->
