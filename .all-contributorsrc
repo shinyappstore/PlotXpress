@@ -17,6 +17,19 @@
         "tool",
         "test"
       ]
+    },
+    {
+      "login": "ebrando",
+      "name": "ebrando",
+      "avatar_url": "https://avatars.githubusercontent.com/u/52273820?v=4",
+      "profile": "https://github.com/ebrando",
+      "contributions": [
+        "data",
+        "example",
+        "ideas",
+        "projectManagement",
+        "userTesting"
+      ]
     }
   ],
   "contributorsPerLine": 7,
