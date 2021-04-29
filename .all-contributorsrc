@@ -14,7 +14,15 @@
         "code",
         "bug",
         "example",
-        "tool"
-        ]
-     }
+        "tool",
+        "test"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "PlotXpress",
+  "projectOwner": "ScienceParkStudyGroup",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
 }
