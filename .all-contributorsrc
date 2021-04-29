@@ -30,6 +30,17 @@
         "projectManagement",
         "userTesting"
       ]
+    },
+    {
+      "login": "mgalland",
+      "name": "Marc Galland",
+      "avatar_url": "https://avatars.githubusercontent.com/u/10114186?v=4",
+      "profile": "http://www.mgalland.info",
+      "contributions": [
+        "ideas",
+        "projectManagement",
+        "test"
+      ]
     }
   ],
   "contributorsPerLine": 7,
