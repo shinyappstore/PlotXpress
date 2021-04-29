@@ -1,0 +1,26 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "mgalland",
+      "name": "Marc Galland",
+      "avatar_url": "https://avatars.githubusercontent.com/u/10114186?v=4",
+      "profile": "http://www.mgalland.info",
+      "contributions": [
+        "ideas",
+        "projectManagement",
+        "test"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "PlotXpress",
+  "projectOwner": "ScienceParkStudyGroup",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
