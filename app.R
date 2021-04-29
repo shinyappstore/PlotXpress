@@ -1,8 +1,8 @@
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # PlotXpress: Shiny app for plotting and comparing the data from dual luciferase assays
 # Created by Joachim Goedhart (@joachimgoedhart) Elias Brandorff and Marc Galland, first version 2020
-# Takes non-tidy, spreadsheet type data as input
-# Uses a CSV file with the conditions
+# Takes the output of the Promoega GloMax as input together with a tidy CSV file that specifies conditions
+# Alternatively the data can be uploaded in a tidy format
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # Copyright (C) 2020  Joachim Goedhart
 # electronic mail address: j #dot# goedhart #at# uva #dot# nl
@@ -33,6 +33,19 @@ library(stringr)
 
 # library(RCurl)
 
+add_mean <- function(x) {
+  avg <- mean(x)
+  triplet <- data.frame(avg, avg, avg)
+  names(triplet) <- c("y","ymin","ymax") #this is what ggplot is expecting
+  return (triplet)
+}
+
+add_median <- function(x) {
+  med <- median(x)
+  triplet <- data.frame(med, med, med)
+  names(triplet) <- c("y","ymin","ymax") #this is what ggplot is expecting
+  return (triplet)
+}
 
 df_example <- read_excel("DualLuc_example_data.xlsx", sheet = "Results")
 df_design <- read.csv("Tidy_design.csv")
@@ -151,12 +164,15 @@ ui <- fluidPage(
                  conditionalPanel(
                    condition = "input.tabs=='Plot'",
                    h4("Data presentation"),
+                   selectInput("zero", "Select reference condition:", choices = "-"
+                               # )
+                   ),
                    selectInput("compare", label = "Compare:", choices = list("condition", "treatment1", "treatment2"), selected = "condition"),
                    selectInput("facet_row", label = "Split rows by:", choices = list(".", "treatment1", "treatment2","condition"), selected = "treatment1"),
                    selectInput("facet_col", label = "Split columns by:", choices = list(".", "treatment1", "treatment2","condition"), selected = "treatment2"),
                    
                    checkboxInput(inputId = "show_control",
-                                 label = "Show control data",
+                                 label = "Show reference data",
                                  value = FALSE),
                    
                    
@@ -537,7 +553,8 @@ df_combined <- reactive({
   
   ###### Combine design and data for Glomax data upload
   if (input$data_type==1) {
-    df <- full_join(df_upload_design(), df_tidy_data(), by='Wells')
+    df_tidy_data <- df_tidy_data() %>% select(Wells,firefly,renilla)
+    df <- full_join(df_upload_design(), df_tidy_data, by='Wells')
   } else {
     (df <- df_upload_data())
   }
@@ -620,13 +637,18 @@ df_processed <- reactive({
   #Calculate the average of each group of conditions/treatments
   df <- df %>% group_by(condition,treatment1,treatment2) %>% mutate(avg=mean(FR))
   
-  df_norm <- df %>% group_by(condition,treatment1,treatment2) %>% summarize(norm=mean(FR)) %>% filter(condition=="control")
-  df_norm$condition <- NULL
+  # select the control condition for calculating the 'Fold Change'
+  control_condition <- input$zero
   
-  # Combine the normalization values (averages of the control) with the dataframe && omit conditions that equal "NA"
-  df <- df %>% full_join(df_norm, by=c("treatment1","treatment2")) %>% na.omit(condition)
-  
-  df <- df %>% mutate(`Fold Change` = FR/norm)
+  if (control_condition != "-") {
+      df_norm <- df %>% group_by(condition,treatment1,treatment2) %>% summarize(norm=mean(FR)) %>% filter(condition==!!control_condition)
+      df_norm$condition <- NULL
+      
+      # Combine the normalization values (averages of the control) with the dataframe && omit conditions that equal "NA"
+      df <- df %>% full_join(df_norm, by=c("treatment1","treatment2")) %>% na.omit(condition)
+      
+      df <- df %>% mutate(`Fold Change` = FR/norm)
+  }
   
   return(df)
   
@@ -674,6 +696,13 @@ observe({
   var_names2 <- names(df2)
   var_list <- c("-", var_names2)
   updateSelectInput(session, "filter_column", choices = var_list)
+  
+  var_names3 <- levels(df2$condition)
+  observe({print(var_names3)})
+  var_list3 <- c("-", var_names3)
+  updateSelectInput(session, "zero", choices = var_list3)
+  
+  
 })
 
 
@@ -741,19 +770,39 @@ plotdata <-  reactive({
   
   ############################ TODO ##############
   # Grid
-
   
   if (input$show_control == FALSE) {
-    df <- df %>% filter(condition!='control')
+    control_condition <- input$zero
+    df <- df %>% filter(condition!=!!control_condition)
   }
   
-  p <-  ggplot(df, aes_string(x = input$compare, y = "`Fold Change`")) 
+  if (input$zero !="-") {
+    p <-  ggplot(df, aes_string(x = input$compare, y = "`Fold Change`")) 
+  } else if (input$zero =="-") {
+    p <-  ggplot(df, aes_string(x = input$compare, y = "FR")) 
+    
+  }
   
   p <- p + geom_jitter(shape = 16, width=0.2, height=0.0, cex=input$pointSize, color="black", alpha=input$alphaInput) 
   
-  if (input$summaryInput !="none") {
-   p <-  p + stat_summary(fun = input$summaryInput, fun.min =input$summaryInput, fun.max = input$summaryInput, geom = "errorbar", width = 0.5, size=1) 
+  if (input$summaryInput =="mean") {
+   # p <-  p + stat_summary(fun = input$summaryInput, fun.min =input$summaryInput, fun.max = input$summaryInput, geom = "errorbar", width = 0.5, size=1) 
+
+   p <- p + stat_summary(data=df, aes_string(x=input$compare),
+                         fun.data = add_mean, 
+                         geom = "errorbar", width=0.5, size=1)
   }
+  
+   
+  if (input$summaryInput =="median") {
+    # p <-  p + stat_summary(fun = input$summaryInput, fun.min =input$summaryInput, fun.max = input$summaryInput, geom = "errorbar", width = 0.5, size=1) 
+    
+    p <- p + stat_summary(data=df, aes_string(x=input$compare),
+                          fun.data = add_median, 
+                          geom = "errorbar", width=0.5, size=1)
+  }
+  
+
 
   
   ########### Do some formatting of the lay-out ###########
