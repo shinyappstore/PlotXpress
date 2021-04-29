@@ -6,21 +6,12 @@
   "commit": false,
   "contributors": [
     {
-      "login": "mgalland",
-      "name": "Marc Galland",
-      "avatar_url": "https://avatars.githubusercontent.com/u/10114186?v=4",
-      "profile": "http://www.mgalland.info",
+      "login": "JoachimGoedhart",
+      "name": "Joachim Goedhart",
+      "avatar_url": "https://avatars.githubusercontent.com/u/39348589?v=4",
+      "profile": "https://huygens.science.uva.nl/",
       "contributions": [
-        "ideas",
-        "projectManagement",
-        "test"
-      ]
-    }
-  ],
-  "contributorsPerLine": 7,
-  "projectName": "PlotXpress",
-  "projectOwner": "ScienceParkStudyGroup",
-  "repoType": "github",
-  "repoHost": "https://github.com",
-  "skipCi": true
-}
+        "code",
+        "bug",
+        "example",
+        "tool",

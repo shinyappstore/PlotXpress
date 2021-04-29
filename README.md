@@ -40,8 +40,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="http://www.mgalland.info"><img src="https://avatars.githubusercontent.com/u/10114186?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Marc Galland</b></sub></a><br /><a href="#ideas-mgalland" title="Ideas, Planning, & Feedback">🤔</a> <a href="#projectManagement-mgalland" title="Project Management">📆</a> <a href="https://github.com/ScienceParkStudyGroup/PlotXpress/commits?author=mgalland" title="Tests">⚠️</a></td>
-  </tr>
+    <td align="center"><a href="https://huygens.science.uva.nl/"><img src="https://avatars.githubusercontent.com/u/39348589?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Joachim Goedhart</b></sub></a><br /><a href="https://github.com/ScienceParkStudyGroup/PlotXpress/commits?author=JoachimGoedhart" title="Code">💻</a> <a href="https://github.com/ScienceParkStudyGroup/PlotXpress/issues?q=author%3AJoachimGoedhart" title="Bug reports">🐛</a> <a href="#example-JoachimGoedhart" title="Examples">💡</a> <a href="#tool-JoachimGoedhart" title="Tools">🔧</a> <a href="https://github.com/ScienceParkStudyGroup/PlotXpress/commits?author=JoachimGoedhart" title="Tests">⚠️</a></td>
 </table>
 
 <!-- markdownlint-restore -->
