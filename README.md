@@ -13,6 +13,23 @@
  
 PlotXpress is a shiny app that simplifies the analysis and plotting of data from a dual luciferase experiment in 96-well format.
 
+## Operattion
+
+The app is available online: [https://huygens.science.uva.nl/PlotXpress/](https://huygens.science.uva.nl/PlotXpress/)
+
+But you can also run it offline in R/Rstudio. In the command line (in R or Rstudio) type shiny::runGitHub('PlotXpress', 'ScienceParkStudyGroup')
+
+Or download it to use it offline:
+
+-download the app.R and csv files with example data.
+
+-Run RStudio and load app.R
+
+-Select 'Run All' (shortcut is command-option-R on a Mac) or click on "Run App" (upper right button on the window)
+
+This should launch a web browser with the Shiny app. Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, magrittr, readxl, DT, stringr) Run this command in R/Rstudio to download and install all the packages at once: -install.packages("shiny", "ggplot2", "dplyr", "tidyr", "magrittr", "readxl", "DT", "readr", "stringr")
+
+
 ## Input data (expressed as arbitrary luminescence units)
 
 ### **Option 1**
