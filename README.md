@@ -31,6 +31,9 @@ Standard output generated with the example data:
 
 Questions related to the shiny app can be addressed to: Joachim Goedhart ([@joachimgoedhart](https://twitter.com/joachimgoedhart))
 
+### License
+The Apache-2.0 License (see the file LICENSE for full text) applies to the software and the CC-BY-4 license (see the file LICENSE-data for full text) applies to the datafiles (DualLuc_example_data.xlsx & Tidy_design.csv)
+
 ## Contributors ✨
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
