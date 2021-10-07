@@ -13,13 +13,41 @@
  
 PlotXpress is a shiny app that simplifies the analysis and plotting of data from a dual luciferase experiment in 96-well format.
 
+## Operation
+
+The app is available online: [https://huygens.science.uva.nl/PlotXpress/](https://huygens.science.uva.nl/PlotXpress/)
+
+The app can also run locally. To launch the app from R/Rstudio, paste this in the command line:
+
+```r
+shiny::runGitHub('PlotXpress', 'ScienceParkStudyGroup')
+```
+
+Or download it to use it offline:
+
+-download the app.R and csv files with example data.
+
+-Run RStudio and load app.R
+
+-Select 'Run All' (shortcut is command-option-R on a Mac) or click on "Run App" (upper right button on the window)
+
+This should launch a web browser with the Shiny app. Note that the app depends on several R packages that need to be installed (shiny, ggplot2, dplyr, tidyr, readr, magrittr, readxl, DT, stringr) Run this command in R/Rstudio to download and install all the packages at once: -install.packages("shiny", "ggplot2", "dplyr", "tidyr", "magrittr", "readxl", "DT", "readr", "stringr")
+
+
 ## Input data (expressed as arbitrary luminescence units)
+
+### **Option 1**
 * Excel sheet containing 2 tables in 96-well lay-out (raw output from a Promega GloMax® Navigator). An unprocessed example output file is included: `DualLuc_example_data.xlsx`
-* An excel file or CSV file in which conditions are indicated in a 96-well lay-out. The conditions are seperated by underscores (see the example design that is included in this repo: `Design_example.xlsx`)
+* A CSV file in which conditions are listed for each well. An example file is available in this repo: `Tidy_design.csv`
 
-### Example output
+### **Option 2**
+* A CSV in tidy format that contains the data and the condition. The minimal information that is required is a column with wells (in the format A01, B01, ..), a column with intensity data and a column with the conditions. An example file is available in this repo: `plotXpress_Tidy-3.csv`
 
-Standard output generated with the example data:
+
+
+## Example output
+
+Standard output generated with the example data and example design:
 
 ![alt text](https://github.com/ScienceParkStudyGroup/PlotXpress/blob/master/plotXpress_example.png "Output")
 
