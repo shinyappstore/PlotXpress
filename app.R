@@ -47,10 +47,32 @@ add_median <- function(x) {
   return (triplet)
 }
 
+add_SD <- function(x) {
+  avg <- mean(x)
+  sd <- sd(x)
+  triplet <- data.frame(avg, avg-sd, avg+sd)
+  names(triplet) <- c("y","ymin","ymax") #this is what ggplot is expecting
+  return (triplet)
+}
+
+add_CI <- function(x) {
+  avg <- mean(x)
+  sd <- sd(x)
+  n <- length(x)
+  sem <-  sd / sqrt(n - 1)
+  CI_lo = avg + qt((1-0.95)/2, n - 1) * sem
+  CI_hi = avg - qt((1-0.95)/2, n - 1) * sem
+  triplet <- data.frame(avg, CI_lo, CI_hi)
+  names(triplet) <- c("y","ymin","ymax") #this is what ggplot is expecting
+  return (triplet)
+}
+
 df_example <- read_excel("DualLuc_example_data.xlsx", sheet = "Results")
 df_design <- read.csv("Tidy_design.csv")
 # df_design_Hek <- read_excel("Design_example_Hek.xlsx")
 # df_design_neuron <- read_excel("Design_example_neuron.xlsx")
+
+Confidence_level <- 0.95
 
 #Define dataframe for
 column <- rep(1:12, each=8)
@@ -140,7 +162,8 @@ ui <- fluidPage(
                                conditionalPanel(
                                  condition = "input.design_input=='2'",
                                  fileInput("upload_design", NULL, multiple = FALSE, accept = c(".xlsx", ".xls", ".txt", ".csv")),
-                                 a("Design template (CSV) available here", href="https://github.com/ScienceParkStudyGroup/PlotXpress/blob/master/Tidy_design.csv", target="_blank"), 
+                                 downloadButton("downloadTemplate", "Download Design template (CSV)"),
+                                 # a("Design template (CSV) available here", href="https://github.com/ScienceParkStudyGroup/PlotXpress/blob/master/Tidy_design.csv", target="_blank"), 
                                  # hr(),
 
             
@@ -181,7 +204,7 @@ ui <- fluidPage(
                    
                    sliderInput("pointSize", "Size of the datapoints", 0, 10, 4),  
                    
-                   radioButtons("summaryInput", "Statistics", choices = list("Mean" = "mean", "Median" = "median", "None" = "none"), selected = "mean"),
+                   radioButtons("summaryInput", "Statistics", choices = list("Mean" = "mean", "Mean & S.D." = "mean_SD", "Mean & 95% CI" = "mean_CI", "Median" = "median", "None" = "none"), selected = "mean"),
                    # checkboxInput(inputId = "add_CI", label = HTML("Add 95% CI <br/> (minimum n=10)"), value = FALSE),
                    # conditionalPanel(
                    #   condition = "input.add_CI == true && input.summaryInput !='box'",
@@ -282,6 +305,26 @@ ui <- fluidPage(
                  ),
                  
                  
+                 conditionalPanel(
+                   condition = "input.tabs=='Data Summary'",
+                   h4("Data summary") ,
+                   # checkboxGroupInput("stats_select", label = h5("Statistics for replicates:"), 
+                   #                    choices = list("mean", "sd", "sem","95CI mean", 'p(Shapiro-Wilk)', "median", "MAD", "IQR", "Q1", "Q3"),
+                   #                    selected = "sem"),
+                   # actionButton('select_all1','select all'),
+                   # actionButton('deselect_all1','deselect all'),
+                   numericInput("digits", "Digits:", 2, min = 0, max = 5),
+                   hr(),
+
+                   
+                   
+                   #        ,
+                   #        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median")
+                   NULL),   
+                 
+                 
+                 
+                 
                  
                  
                  conditionalPanel(
@@ -293,20 +336,20 @@ ui <- fluidPage(
                     "session(s) connected to this app.",
                    hr(),
                    h4("Find our other dataViz apps at:"),a("https://huygens.science.uva.nl/", href = "https://huygens.science.uva.nl/")
-                 ),
+                 )
                  
-                 conditionalPanel(
-                   condition = "input.tabs=='Data Summary'",
-                   h4("Data summary") ,
-                   checkboxGroupInput("stats_select", label = h5("Statistics for table:"), 
-                                      choices = list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median"),
-                                      selected = "sem"),
-                   actionButton('select_all1','select all'),
-                   actionButton('deselect_all1','deselect all'),
-                   numericInput("digits", "Digits:", 2, min = 0, max = 5)
-                   #        ,
-                   #        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median")
-                 )   
+                 # conditionalPanel(
+                 #   condition = "input.tabs=='Data Summary'",
+                 #   h4("Data summary") ,
+                 #   # checkboxGroupInput("stats_select", label = h5("Statistics for table:"), 
+                 #   #                    choices = list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median"),
+                 #   #                    selected = "sem"),
+                 #   # actionButton('select_all1','select all'),
+                 #   # actionButton('deselect_all1','deselect all'),
+                 #   numericInput("digits", "Digits:", 2, min = 0, max = 5)
+                 #   #        ,
+                 #   #        selectInput("stats_hide2", "Select columns to hide", "", multiple = TRUE, choices=list("mean", "sd", "sem","95CI mean", "median", "MAD", "IQR", "Q1", "Q3", "95CI median")
+                 # )   
                  
     ),
     mainPanel(
@@ -347,8 +390,8 @@ ui <- fluidPage(
                   #              #                                            htmlOutput("HTMLpreset"),
                                 # NULL)
                    ), 
-                  # tabPanel("Data Summary",dataTableOutput('data_summary')
-                  # ),
+                  tabPanel("Data Summary",h4("Statistical Summary of the Data"),dataTableOutput('data_summary')
+                  ),
                   tabPanel("About", includeHTML("about.html")
                   )
       )
@@ -407,6 +450,11 @@ df_upload_design <- reactive({
     }
     }
     data <- data %>% separate(Wells, c("row", "column"), sep=1, remove = FALSE)
+    
+    #Add empty columns for treatments if this is not supplied: for compatibility with data display
+    if (is.null(data$treatment1)) {data$treatment1 <- "-"}
+    if (is.null(data$treatment2)) {data$treatment2 <- "-"}
+    
     return(data)
   })
   
@@ -554,7 +602,7 @@ df_combined <- reactive({
   ###### Combine design and data for Glomax data upload
   if (input$data_type==1) {
     df_tidy_data <- df_tidy_data() %>% select(Wells,firefly,renilla)
-    df <- full_join(df_upload_design(), df_tidy_data, by='Wells')
+    df <- left_join(df_upload_design(), df_tidy_data, by='Wells')
   } else {
     (df <- df_upload_data())
   }
@@ -632,22 +680,22 @@ df_processed <- reactive({
   observe({print(head(df))})
   
   #Caclulcate the ratio of readout over internal control
-  df <- df %>% mutate(FR=firefly/renilla) 
+  df <- df %>% mutate(signal=firefly/renilla) 
   
   #Calculate the average of each group of conditions/treatments
-  df <- df %>% group_by(condition,treatment1,treatment2) %>% mutate(avg=mean(FR))
+  df <- df %>% group_by(condition,treatment1,treatment2) %>% mutate(avg=mean(signal))
   
   # select the control condition for calculating the 'Fold Change'
   control_condition <- input$zero
   
   if (control_condition != "-") {
-      df_norm <- df %>% group_by(condition,treatment1,treatment2) %>% summarize(norm=mean(FR)) %>% filter(condition==!!control_condition)
+      df_norm <- df %>% group_by(condition,treatment1,treatment2) %>% summarize(norm=mean(signal)) %>% filter(condition==!!control_condition)
       df_norm$condition <- NULL
       
       # Combine the normalization values (averages of the control) with the dataframe && omit conditions that equal "NA"
       df <- df %>% full_join(df_norm, by=c("treatment1","treatment2")) %>% na.omit(condition)
       
-      df <- df %>% mutate(`Fold Change` = FR/norm)
+      df <- df %>% mutate(`Fold Change` = signal/norm)
   }
   
   return(df)
@@ -695,10 +743,11 @@ observe({
   }
   var_names2 <- names(df2)
   var_list <- c("-", var_names2)
+  observe({print(var_list)})
   updateSelectInput(session, "filter_column", choices = var_list)
   
-  var_names3 <- levels(df2$condition)
-  observe({print(var_names3)})
+  var_names3 <- levels(as.factor(df2$condition))
+  # observe({print(class(var_names3))})
   var_list3 <- c("-", var_names3)
   updateSelectInput(session, "zero", choices = var_list3)
   
@@ -760,6 +809,18 @@ output$downloadData <- downloadHandler(
   }
 )
 
+#### Export the data in tidy format ###########
+
+output$downloadTemplate <- downloadHandler(
+  filename = function() {
+    paste("Design", ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(df_design, file, row.names = FALSE)
+  }
+)
+
+
 
 
 ######## PREPARE PLOT FOR DISPLAY ##########
@@ -779,7 +840,7 @@ plotdata <-  reactive({
   if (input$zero !="-") {
     p <-  ggplot(df, aes_string(x = input$compare, y = "`Fold Change`")) 
   } else if (input$zero =="-") {
-    p <-  ggplot(df, aes_string(x = input$compare, y = "FR")) 
+    p <-  ggplot(df, aes_string(x = input$compare, y = "signal")) 
     
   }
   
@@ -792,6 +853,27 @@ plotdata <-  reactive({
                          fun.data = add_mean, 
                          geom = "errorbar", width=0.5, size=1)
   }
+  
+  if (input$summaryInput =="mean_SD") {
+
+    p <- p + stat_summary(data=df, aes_string(x=input$compare),
+                          fun.data = add_SD, 
+                          geom = "errorbar", width=0.3, size=1) +
+      stat_summary(data=df, aes_string(x=input$compare),
+                   fun.data = add_mean, 
+                   geom = "errorbar", width=0.5, size=1)
+  }
+  
+  if (input$summaryInput =="mean_CI") {
+    
+    p <- p + stat_summary(data=df, aes_string(x=input$compare),
+                          fun.data = add_CI, 
+                          geom = "errorbar", width=0.3, size=1) +
+      stat_summary(data=df, aes_string(x=input$compare),
+                   fun.data = add_mean, 
+                   geom = "errorbar", width=0.5, size=1)
+  }
+  
   
    
   if (input$summaryInput =="median") {
@@ -898,7 +980,38 @@ plotdesign <- reactive({
   
 })
 
+df_summary <- reactive({
+  
+  df <- df_processed()
+  # df <- df_processed() %>% group_by(condition,treatment1,treatment2) %>%
+  #       summarise(n=n())
+  
+  # When a reference is set, use the 'Fold Change' to calculate stats
+  if (input$zero !="-") {
+    df <- df %>% group_by(condition,treatment1,treatment2) %>%
+      summarise(n=n(),
+                mean = mean(`Fold Change`, na.rm = TRUE),
+                sd = sd(`Fold Change`, na.rm = TRUE),
+                median= median(`Fold Change`, na.rm = TRUE))
+    # When no reference is set, use the 'signal' to calculate stats
+  } else if (input$zero =="-") {
+    df <- df %>% group_by(condition,treatment1,treatment2) %>%
+      summarise(n=n(),
+                mean = mean(signal, na.rm = TRUE),
+                sd = sd(signal, na.rm = TRUE),
+                median= median(signal, na.rm = TRUE))
 
+  }
+  
+
+  df <- df %>% mutate(sem = sd / sqrt(n - 1),
+                      CI_lo = mean + qt((1-Confidence_level)/2, n - 1) * sem,
+                      CI_hi = mean - qt((1-Confidence_level)/2, n - 1) * sem)
+  df <- df %>% select(condition,treatment1,treatment2,n,mean,sd,sem,CI_lo,CI_hi,median) %>% mutate_at(c(5:10), round, input$digits)
+  
+  return(df)
+  
+})
 
 #### DISPLAY UPLOADED DATA (as provided) ##################
 
@@ -968,6 +1081,23 @@ output$tidy_data_uploaded <- renderDataTable(
                  lengthMenu = c(10, 100, 1000, 10000), columnDefs = list(list(className = 'dt-left', targets = '_all'))),
   editable = FALSE,selection = 'none'
 )
+
+#### Render the data summary as a table ###########
+
+output$data_summary <- renderDataTable(
+    datatable(
+    df_summary(),
+    selection = 'none',
+    extensions = c('Buttons', 'ColReorder'),
+    options = list(dom = 'Bfrtip', pageLength = 100,
+                   buttons = c('copy', 'csv','excel', 'pdf'),
+                   editable=FALSE, colReorder = list(realtime = FALSE), columnDefs = list(list(className = 'dt-center', targets = '_all'))
+    ) 
+    ) 
+) 
+
+
+
 
 # ########### Update count #########
 # Reactively update the client.
